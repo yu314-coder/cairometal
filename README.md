@@ -19,6 +19,12 @@ surface.write_to_png("out.png")
 
 > **Origin / honest scope note.** CairoMetal began inside [OfflinAi / CodeBench](https://github.com/yu314-coder) (an on-device scientific-Python stack for iOS) and grew from a manim-only subset into a general GPU cairo. It is a faithful, GPU-backed cairo — but note it does **not** speed up *manim* specifically: in manim, cairo fill/stroke is ~5% of frame time and the bottleneck is single-threaded Python path interpolation, which no graphics backend can touch. CairoMetal is best thought of as "pixel-accurate cairo, on the GPU," not a manim accelerator.
 
+## Prior art — how this differs
+
+Unlike PyTorch-on-Metal (which exists officially), **cairo has no Metal backend** and there is no real precedent for one. Cairo's backends are image (software), Quartz, Win32, Xlib, and PDF/SVG/PostScript; its only GPU path was OpenGL (`cairo-gl` / glitz), which was **removed in 2022–2023**, and cairo is now in **maintenance-only mode**. The 2D engine that *does* have a Metal backend is **Skia** — a different library, not cairo.
+
+CairoMetal fills that gap: a **pycairo-compatible cairo that renders on Metal**, and it **works on both iOS and macOS** — the same sources build for either (`build.sh` / `python/build.sh` on macOS, `python/build_ios.sh` for iOS). To our knowledge, a GPU/Metal cairo with a pycairo drop-in is novel.
+
 ## Features
 
 A broad slice of the cairo API, with cairo-exact semantics and enum values:
