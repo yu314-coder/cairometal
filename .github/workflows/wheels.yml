@@ -1,0 +1,58 @@
+name: build & publish wheels
+
+# Builds the full cp310–cp314 macOS arm64 matrix with consistent tags (something
+# ad-hoc local builds can't do — each local Python targets a different macOS/arch),
+# then publishes to PyPI via Trusted Publishing (no API token stored).
+#
+# To release: set up a PyPI "trusted publisher" for project `cairometal` pointing
+# at this repo + workflow, then push a tag like `v0.1.0`.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  wheels:
+    name: wheels (macOS arm64)
+    runs-on: macos-14            # Apple Silicon runner — ships Xcode + the Metal toolchain
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+        # cp310–cp314 / arm64 come from [tool.cibuildwheel] in pyproject.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels
+          path: wheelhouse/*.whl
+
+  sdist:
+    name: sdist
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pipx run build --sdist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
+
+  publish:
+    name: publish to PyPI
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    environment: pypi
+    permissions:
+      id-token: write            # OIDC Trusted Publishing — no token in the repo
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1

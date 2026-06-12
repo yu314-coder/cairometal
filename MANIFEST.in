@@ -1,0 +1,6 @@
+include README.md PYPI.md LICENSE pyproject.toml
+recursive-include include *.h
+recursive-include src *.m *.c *.h
+recursive-include python *.c
+recursive-include shaders *.metal
+include prebuilt/default.metallib

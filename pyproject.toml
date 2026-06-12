@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cairometal"
+version = "0.1.0"
+description = "A pycairo-compatible 2D vector-graphics backend that renders on the Apple GPU via Metal. Independent project — not affiliated with the cairo project or pycairo."
+readme = "PYPI.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Yu Yao-Hsing", email = "euler.yu@gmail.com" }]
+keywords = ["cairo", "pycairo", "metal", "gpu", "graphics", "2d", "vector", "apple", "macos"]
+
+# macOS-only: Metal is an Apple framework. A wheel is built per-CPython version
+# (the extension is NOT abi3). No Linux/Windows wheels — those have no Metal.
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Environment :: GPU",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/yu314-coder/cairometal"
+Source = "https://github.com/yu314-coder/cairometal"
+Issues = "https://github.com/yu314-coder/cairometal/issues"
+
+# ── cibuildwheel: run on a macOS runner with full Xcode (needs `xcrun metal`) ──
+# Produces cp310–cp314 arm64 wheels. Add "x86_64" to archs only if you can test
+# on an Intel Mac. Linux/Windows/musl are skipped — Metal is Apple-only.
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = "*-manylinux* *-musllinux* *_i686 *-win* pp*"
+
+[tool.cibuildwheel.macos]
+archs = ["arm64"]
