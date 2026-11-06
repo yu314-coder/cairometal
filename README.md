@@ -142,7 +142,7 @@ Arbitrary self-intersecting paths with holes are filled with the classic two-pas
 
 ### Optimizations
 
-Persistent pipeline & depth-stencil states (built once); one command buffer per frame; triple-buffered dynamic buffers gated by a `dispatch_semaphore`; IOSurface-backed target for zero-copy encode; zero per-draw heap allocation (bump-allocated ring); draws grouped by pipeline state.
+Persistent pipeline & depth-stencil states (built once); one command buffer per frame; triple-buffered dynamic buffers gated by a `dispatch_semaphore`; IOSurface-backed target for zero-copy encode; zero per-draw heap allocation (bump-allocated ring); draws grouped by pipeline state. A frame drawn into a caller's buffer (`ImageSurface.create_for_data`, as manim does) whose draws are all OVER starts from a transparent memoryless attachment instead of loading the whole buffer, and a tile function (`cm_tile_composite`) composites it into the buffer at the end, only where something was drawn (`CM_LAYER_FRAMES=0` or `cairo_metal._set_layer_frames(0)` turns it off); the `MTLBuffer` over a numpy array's memory is kept while that array lives, so a new surface over it is not wrapped and mapped again. See `STATUS.md`.
 
 ## Build
 
@@ -177,6 +177,7 @@ PYTHONPATH="$PWD/python" python3 tests/test_geometry.py     # transforms, paths,
 PYTHONPATH="$PWD/python" python3 tests/test_raster.py       # rasterized output checks
 PYTHONPATH="$PWD/python" python3 tests/test_robust.py       # edge cases / robustness
 PYTHONPATH="$PWD/python" python3 tests/test_reference.py    # pixel-diff vs REAL cairo (needs pycairo)
+PYTHONPATH="$PWD/python" python3 tests/test_layer_frames.py # layer frames vs whole-frame loads, kept GPU wraps (needs numpy)
 PYTHONPATH="$PWD/python" python3 python/test_full_shim.py   # full pycairo-shim smoke test
 PYTHONPATH="$PWD/python" python3 python/test_gaps.py        # API-gap coverage
 ```
