@@ -102,6 +102,8 @@ surface.write_to_png("demo.png")
 
 Because the module is named `cairo_metal` (not `cairo`), it never shadows a real pycairo install; you opt in explicitly with `import cairo_metal as cairo`. Enums (`FORMAT_*`, `LINE_JOIN_*`, `LINE_CAP_*`, `OPERATOR_*`, `FILL_RULE_*`, `EXTEND_*`, `FILTER_*`) carry the same integer values as cairo.
 
+Drawing is batched: a surface's fills and strokes go into one GPU frame that is rendered when the surface is flushed (or read back, or written to PNG). You can draw into any number of surfaces in any order: the device has three frames, and when all three are open on other surfaces the oldest is rendered early, which gives the same pixels cairo would. A frame wait that somehow finds none free fails the draw with an error after 20 s rather than waiting for ever.
+
 ### C API
 
 The public C API is [`include/cairo_metal.h`](include/cairo_metal.h) (~1020 lines, 246 `CM_PUBLIC` functions). Every entry point mirrors a cairo call (`cm_image_surface_create`, `cm_context_create`, `cm_move_to`, `cm_curve_to`, `cm_set_source_rgba`, `cm_fill_preserve`, `cm_stroke_preserve`, `cm_surface_write_to_png`, …). `cm_matrix_t` is binary-compatible with `cairo_matrix_t`. `cm_surface_get_iosurface()` returns the `IOSurfaceRef` for zero-copy hand-off (e.g. to VideoToolbox).
@@ -179,6 +181,7 @@ PYTHONPATH="$PWD/python" python3 tests/test_robust.py       # edge cases / robus
 PYTHONPATH="$PWD/python" python3 tests/test_reference.py    # pixel-diff vs REAL cairo (needs pycairo)
 PYTHONPATH="$PWD/python" python3 tests/test_layer_frames.py # layer frames vs whole-frame loads, kept GPU wraps (needs numpy)
 PYTHONPATH="$PWD/python" python3 tests/test_path_batch.py   # one-call manim paths vs call by call, transparent draws skipped (needs numpy)
+PYTHONPATH="$PWD/python" python3 tests/test_frame_limit.py  # more surfaces drawn than GPU frames: no hang, same pixels (needs numpy, pycairo)
 PYTHONPATH="$PWD/python" python3 python/test_full_shim.py   # full pycairo-shim smoke test
 PYTHONPATH="$PWD/python" python3 python/test_gaps.py        # API-gap coverage
 ```
