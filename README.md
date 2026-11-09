@@ -51,6 +51,8 @@ The Python extension (`python/cairo_metal_ext.c`, 2246 lines) exposes **171 symb
 
 ## Quick start (macOS)
 
+Prebuilt: `pip install cairometal` (Apple Silicon, CPython 3.10–3.14), then `import cairometal as cairo`. See [PyPI](https://pypi.org/project/cairometal/). From source:
+
 ```bash
 git clone https://github.com/yu314-coder/cairometal.git
 cd cairometal
