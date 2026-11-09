@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cairometal"
-version = "0.1.0"
+version = "0.2.0"
 description = "A pycairo-compatible 2D vector-graphics backend that renders on the Apple GPU via Metal. Independent project — not affiliated with the cairo project or pycairo."
 readme = "PYPI.md"
 requires-python = ">=3.10"

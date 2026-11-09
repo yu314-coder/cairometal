@@ -101,6 +101,8 @@ cairometal/
 - **Metallib discovery:** at import, `__init__.py` sets `$CM_METALLIB` to the `default.metallib` next to the extension, so the engine loads it with zero configuration. The engine's lookup order is `$CM_METALLIB` → the app/main-bundle default library → compile-from-source; you can override `$CM_METALLIB` to point at your own.
 - **Why `import cairometal` works without a C edit:** the extension is built as the submodule **`cairometal.cairo_metal`**, whose init symbol is `PyInit_cairo_metal` (named after the last path component) — exactly what `cairo_metal_ext.c` already exports. So the same source serves both the desktop package and the iOS embedding (which imports a top-level `cairo_metal`) with no source change.
 - **Rendering approach:** stencil-then-cover path filling, IOSurface-backed surfaces, GPU compositing for groups/clips.
+- **Antialiasing:** the default is 4× MSAA. `ANTIALIAS_GOOD` / `ANTIALIAS_BEST` (or `CM_ANALYTIC_AA=1` for every draw) use cairo-style measured coverage instead, which matches real cairo's edges much more closely at some GPU cost.
+- **Batched frames:** a surface's drawing is recorded into one GPU frame and rendered when the surface is flushed, read back or written out. A surface over your own page-aligned memory (`create_for_data`) is drawn straight into that buffer. For such a surface, a frame whose draws all use `OVER` touches only the pixels something was drawn on.
 
 ---
 
@@ -123,10 +125,24 @@ MACOSX_DEPLOYMENT_TARGET=11.0 ARCHFLAGS="-arch arm64" python -m build --wheel
 
 ## Wheels & releasing
 
-- Wheels are tagged e.g. `cairometal-0.1.0-cp314-cp314-macosx_11_0_arm64.whl` — per-CPython version, macOS `arm64`, deployment target 11.0.
-- The full **cp310–cp314** matrix is built in CI by [cibuildwheel](https://cibuildwheel.pypa.io/) on a macOS Apple-Silicon runner and published to PyPI via **Trusted Publishing** (OIDC — no API token stored). See [`.github/workflows/wheels.yml`](.github/workflows/wheels.yml); release by pushing a `v*` tag. (To add wheels to an *already-published* version, the publish step needs `skip-existing: true`.)
+- Wheels are tagged e.g. `cairometal-0.2.0-cp314-cp314-macosx_11_0_arm64.whl` — per-CPython version, macOS `arm64`, deployment target 11.0.
+- Each release has a wheel for every CPython from 3.10 to 3.14, each tested in a fresh environment against the full test suite before upload.
+- The repo also carries a [cibuildwheel](https://cibuildwheel.pypa.io/) workflow ([`.github/workflows/wheels.yml`](.github/workflows/wheels.yml)) that builds the same matrix on a macOS Apple-Silicon runner and publishes through PyPI **Trusted Publishing** (OIDC, no stored token) when a `v*` tag is pushed. Trusted Publishing has to be set up on PyPI first. To add wheels to an *already-published* version, the publish step needs `skip-existing: true`.
 
 ---
+
+## Changes
+
+**0.2.0**
+
+- *Wheels for CPython 3.10–3.14* (0.1.0 had a 3.14 wheel only).
+- *Closer to real cairo.* Gradient fills and strokes had red and blue swapped, and a stroke gradient ignored the transform. Drawing after `flush()` wiped what was drawn before it, and an empty flush blended the previous frame in again. Curves now flatten as cairo's do.
+- *Measured antialiasing.* `ANTIALIAS_GOOD` / `ANTIALIAS_BEST` use cairo-style coverage measured per pixel row, as cairo's own scan converter does.
+- *No more hangs or out-of-memory errors.* Drawing into four or more surfaces in turn, without flushing them, waited for ever for a GPU frame while holding the GIL. The oldest pending frame is now rendered early instead, with the same pixels. The registry that `_flush_all` walks now grows as needed (it stopped at 64 surfaces), and a frame wait that still finds no frame free raises an error after 20 s. A frame of about 1,800 or more draws no longer raises "out of memory".
+- *Faster and lighter.* `create_for_data` draws straight into a page-aligned caller buffer, and the GPU wrap over a numpy array is kept while the array lives. On such a surface, a frame of `OVER` draws touches only the pixels drawn on. Measured on manim frames at 4K: GPU wait went from 6.8–11.4 ms to 2.2–3.0 ms, and peak memory from 360–401 MB to 282–324 MB.
+- New `last_gpu_ms()`: the GPU time of the last frame that was waited on.
+
+**0.1.0** — first release.
 
 ## Origin
 
@@ -134,6 +150,7 @@ MACOSX_DEPLOYMENT_TARGET=11.0 ARCHFLAGS="-arch arm64" python -m build --wheel
 
 ## Limitations & notes
 
+- **Drawing is batched per surface.** A surface's fills and strokes go into one GPU frame that is rendered when the surface is flushed (or read back, or written to PNG). Any number of surfaces may hold pending drawing: when the device's three frames are all open on other surfaces, the oldest is rendered early, which gives the same pixels cairo would.
 - **macOS / Apple Silicon only.** `arm64` wheels; the `x86_64` (Intel-Mac) path compiles but is currently untested.
 - **Per-version wheels** (not `abi3`) — install the wheel matching your Python.
 - Independent re-implementation of a cairo-compatible API — **not** the cairo library or `pycairo`.
